@@ -8,5 +8,5 @@ return [
         'keyword_prefix' => null,
         'keyword_suffix' => null,
     ],
-    'filter' => null,
+    'filter' => Semok\Scrapper\GoogleImage\Filter\BaseFilter::class,
 ];

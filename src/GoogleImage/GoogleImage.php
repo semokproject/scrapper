@@ -2,7 +2,7 @@
 
 namespace Semok\Scrapper\GoogleImage;
 
-use Log;
+use SemokLog;
 use Storage;
 use Exception;
 use Semok\Scrapper\GoogleImage\Exceptions\RequestException;
@@ -40,13 +40,13 @@ class GoogleImage
         $content = $this->getContent();
         $htmldom = new Document;
         $contents = $htmldom->loadHtml($content);
-        if (!$contents->find('div.rg_di',0)) {
-            throw new RequestException('Invalid format');
+        if (!$contents->find('div.rg_di', 0)) {
+            throw new RequestException('Invalid response format');
         }
         $html = $contents->find('div.rg_di');
         foreach ($html as $htmlnya) {
             $image = array();
-            if(!$a = $htmlnya->find('div.rg_meta',0)){
+            if(!$a = $htmlnya->find('div.rg_meta', 0)){
                 continue;
             }
             $meta = json_decode($a->innertext);
@@ -74,10 +74,10 @@ class GoogleImage
                 $image['domain'] = $this->getHost($image['page_url']);
                 if ($this->filter) {
                     try {
-                        $image = call_user_func_array($this->filter, [$image]);
+                        $image = (app()->make($this->filter))->runFilter($image);
                         if ($image) $images[] = $image;
                     } catch (Exception $e) {
-                        Log::info('GoogleImage Apply Filter: ' . $e->getMessage());
+                        SemokLog::file('scrapper')->error('GoogleImageScrapper: Apply Filter: ' . $e->getMessage());
                     }
                 } else {
                     $images[] = $image;

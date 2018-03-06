@@ -2,7 +2,7 @@
 
 namespace Semok\Scrapper\BingResult;
 
-use Log;
+use SemokLog;
 use Exception;
 use Semok\Scrapper\BingResult\Exceptions\RequestException;
 
@@ -36,17 +36,17 @@ class BingResult
         foreach ($contents as $content) {
             if ($this->filter) {
                 try {
-                    $result = call_user_func_array($this->filter, [$content]);
+                    $result = (app()->make($this->filter))->runFilter($content);
                     if ($result) $results[] = $result;
                 } catch (Exception $e) {
-                    Log::info('BingResult Apply Filter: ' . $e->getMessage());
+                    SemokLog::file('scrapper')->error('BingResultScrapper: Apply Filter: ' . $e->getMessage());
                 }
             } else {
                 $results[] = $content;
             }
         }
         if (empty($results)) {
-            throw new RequestException("Empty results");
+            throw new RequestException("Empty results after filter applied");
         }
         return $results;
 
@@ -61,10 +61,10 @@ class BingResult
             $xml_string = file_get_contents($url);
             $results = $this->xmlToArray($xml_string);
             if (!isset($results['channel']['item'])) {
-                throw new Exception("Invalid format.");
+                throw new RequestException("Invalid bing results format.");
             }
             if (!is_array($results['channel']['item']) || empty($results['channel']['item'])) {
-                throw new RequestException("Empty response.");
+                throw new RequestException("Empty results.");
             }
             return $results['channel']['item'];
         } catch (Exception $e) {

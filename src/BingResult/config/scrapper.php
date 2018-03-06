@@ -5,7 +5,7 @@ return [
         'size' => 'any',
         'page' => 1,
         'keyword_prefix' => null,
-        'keyword_suffix' => ' site:www.bookdepository.com',
+        'keyword_suffix' => null,
     ],
-    'filter' => null
+    'filter' => Semok\Scrapper\BingResult\Filter\BaseFilter::class
 ];
