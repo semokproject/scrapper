@@ -6,7 +6,7 @@ use Semok\Support\Exceptions\RuntimeException;
 
 class RequestException extends RuntimeException
 {
-    protected $filename = 'scrapper.error.log';
+    public $filename = 'scrapper.error.log';
 
     public function __construct($message, $code = 0, Exception $previous = null)
     {
