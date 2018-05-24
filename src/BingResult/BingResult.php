@@ -31,23 +31,22 @@ class BingResult
         $this->keyword = $keyword;
         $this->options = $options;
         $this->filter = $filter;
-        $contents = $this->getContent();
-        $results = [];
-        foreach ($contents as $content) {
-            if ($this->filter) {
-                try {
-                    $result = (app()->make($this->filter))->runFilter($content);
-                    if ($result) $results[] = $result;
-                } catch (Exception $e) {
-                    SemokLog::file('scrapper')->error('BingResultScrapper: Apply Filter: ' . $e->getMessage());
-                }
-            } else {
-                $results[] = $content;
-            }
-        }
-        if (empty($results)) {
-            throw new RequestException("Empty results after filter applied");
-        }
+        $results = $this->getContent();
+        if ($this->filter) {
+			$items = collect([]);
+			$results->get('results')->each(function($item) use($items) {
+				try {
+                    $result = app()->makeWith($this->filter, ['item' => $item])->handle();
+					if ($result) $items->push($result);
+				} catch (Exception $e) {
+					SemokLog::file('scrapper')->error('BingResultScrapper: Apply Filter: ' . $e->getMessage());
+				}
+			});
+			$results->put('results', $items);
+			if (!$results->get('results')->count()) {
+				throw new RequestException('Empty Result after filter applied');
+			}
+		}
         return $results;
 
     }
@@ -58,15 +57,24 @@ class BingResult
         $url = 'http://www.bing.com:80/search?' . http_build_query($this->request_queries);
         try {
 
-            $xml_string = file_get_contents($url);
-            $results = $this->xmlToArray($xml_string);
+            $results = simplexml_load_string(file_get_contents($url));
+            $results = json_decode(json_encode($results), 1);
             if (!isset($results['channel']['item'])) {
                 throw new RequestException("Invalid bing results format.");
             }
             if (!is_array($results['channel']['item']) || empty($results['channel']['item'])) {
                 throw new RequestException("Empty results.");
             }
-            return $results['channel']['item'];
+            $bing = [
+                'attributes' => [
+                    'url' => $url,
+                    'keyword' => $this->keyword,
+                    'options' => $this->options,
+                    'filter' => $this->filter
+                ],
+                'results' => $results['channel']['item']
+            ];
+            return semok_collect($bing);
         } catch (Exception $e) {
             throw new RequestException($e->getMessage());
         }
@@ -91,31 +99,6 @@ class BingResult
 
         if (isset($this->options['request_queries']) && is_array($this->options['request_queries'])) {
             $this->request_queries = array_merge($this->request_queries, $this->options['request_queries']);
-        }
-    }
-
-    protected function xmlToArray($xml) {
-    	$this->normalizeSimpleXML(simplexml_load_string($xml), $result);
-    	return ($result);
-    }
-
-    protected function normalizeSimpleXML($obj, &$result) {
-        $data = $obj;
-        if (is_object($data)) {
-            $data = get_object_vars($data);
-        }
-        if (is_array($data)) {
-            foreach ($data as $key => $value) {
-                $res = null;
-                $this->normalizeSimpleXML($value, $res);
-                if (($key == '@attributes') && ($key)) {
-                    $result = $res;
-                } else {
-                    $result[$key] = $res;
-                }
-            }
-        } else {
-            $result = $data;
         }
     }
 }
